@@ -225,6 +225,40 @@ static inline unsigned char peek_at(subject *subj, bufsize_t pos) {
   return subj->input.data[pos];
 }
 
+static int peek_prev_char(subject *subj, bufsize_t from_pos, bufsize_t *char_pos,
+                          int32_t *uc) {
+  bufsize_t pos;
+  int len;
+
+  if (from_pos == 0) {
+    *uc = 10;
+    if (char_pos != NULL) {
+      *char_pos = 0;
+    }
+    return 0;
+  }
+
+  pos = from_pos - 1;
+  while (pos > 0 && peek_at(subj, pos) >> 6 == 2) {
+    pos -= 1;
+  }
+
+  len = cmark_utf8proc_iterate(subj->input.data + pos, from_pos - pos, uc);
+  if (len == -1) {
+    *uc = 10;
+    if (char_pos != NULL) {
+      *char_pos = 0;
+    }
+    return -1;
+  }
+
+  if (char_pos != NULL) {
+    *char_pos = pos;
+  }
+
+  return len;
+}
+
 // Return true if there are more characters in the subject.
 static inline int is_eof(subject *subj) {
   return (subj->pos >= subj->input.len);
@@ -427,36 +461,26 @@ static int scan_delims(subject *subj, unsigned char c, bool *can_open,
   int numdelims = 0;
   bufsize_t before_char_pos;
   int32_t after_char = 0;
-  int32_t before_char = 0;
+  int32_t before_char = 10;
+  int32_t before_main_char = 10;
+  int32_t two_before_char = 10;
   int len;
+  bool before_is_cjk;
+  bool before_is_punctuation;
+  bool after_is_cjk;
+  bool after_is_punctuation;
+  bool has_two_before_char = false;
   bool left_flanking, right_flanking;
-
-  if (subj->pos == 0) {
-    before_char = 10;
-  } else {
-    before_char_pos = subj->pos - 1;
-    // walk back to the beginning of the UTF_8 sequence:
-    while (peek_at(subj, before_char_pos) >> 6 == 2 && before_char_pos > 0) {
-      before_char_pos -= 1;
-    }
-    len = cmark_utf8proc_iterate(subj->input.data + before_char_pos,
-                                 subj->pos - before_char_pos, &before_char);
+  len = peek_prev_char(subj, subj->pos, &before_char_pos, &before_char);
+  before_main_char = before_char;
+  if (len != -1 && cmark_utf8proc_is_non_emoji_general_use_vs(before_char)) {
+    len = peek_prev_char(subj, before_char_pos, NULL, &two_before_char);
     if (len == -1) {
-      before_char = 10;
-    }
-    if ((before_char >> 4) == 0xfe0 && ((before_char >= 0xfe00 && before_char <= 0xfe02) || before_char == 0xfe0e)) {
-      // standard variation selector, go back one more code point:
-      //   U+FE00..U+FE02: can follow a ideograph
-      //   U+FE0E: forces the previous character to be rendered as not emoji but text (e.g. U+303D, U+3297)
-      before_char_pos -= 1;
-      while (peek_at(subj, before_char_pos) >> 6 == 2 &&
-             before_char_pos > 0) {
-        before_char_pos -= 1;
-      }
-      len = cmark_utf8proc_iterate(subj->input.data + before_char_pos,
-                                   subj->pos - before_char_pos, &before_char);
-      if (len == -1) {
-        before_char = 10;
+      two_before_char = 10;
+    } else {
+      has_two_before_char = true;
+      if (!cmark_utf8proc_is_space(two_before_char)) {
+        before_main_char = two_before_char;
       }
     }
   }
@@ -476,29 +500,37 @@ static int scan_delims(subject *subj, unsigned char c, bool *can_open,
   if (len == -1) {
     after_char = 10;
   }
+  before_is_punctuation =
+      cmark_utf8proc_is_punctuation_or_symbol(before_main_char);
+  after_is_punctuation = cmark_utf8proc_is_punctuation_or_symbol(after_char);
+  before_is_cjk = cmark_utf8proc_is_ideographic_vs(before_char);
+  if (has_two_before_char && before_main_char == two_before_char) {
+    before_is_cjk = cmark_utf8proc_is_CJK(two_before_char) ||
+                    cmark_utf8proc_is_CJK_ambiguous_punctuation(two_before_char,
+                                                                before_char);
+  } else if (!before_is_cjk) {
+    before_is_cjk = cmark_utf8proc_is_CJK(before_char);
+  }
+  after_is_cjk = cmark_utf8proc_is_CJK(after_char);
+
   left_flanking = numdelims > 0 && !cmark_utf8proc_is_space(after_char) &&
-                  ((!cmark_utf8proc_is_punctuation_or_symbol(after_char) ||
-                   cmark_utf8proc_is_space(before_char) ||
-                    cmark_utf8proc_is_punctuation_or_symbol(before_char)) ||
-                   (cmark_utf8proc_is_CJK(before_char) ||
-                    cmark_utf8proc_is_CJK(after_char)));
-  right_flanking = numdelims > 0 && !cmark_utf8proc_is_space(before_char) &&
-                   ((!cmark_utf8proc_is_punctuation_or_symbol(before_char)
-                     || cmark_utf8proc_is_space(after_char) ||
-                     cmark_utf8proc_is_punctuation_or_symbol(after_char)) ||
-                    (cmark_utf8proc_is_CJK(before_char) ||
-                     cmark_utf8proc_is_CJK(after_char)));
+                  ((!after_is_punctuation ||
+                    cmark_utf8proc_is_space(before_main_char) ||
+                    before_is_punctuation) ||
+                   before_is_cjk || after_is_cjk);
+  right_flanking = numdelims > 0 && !cmark_utf8proc_is_space(before_main_char) &&
+                   ((!before_is_punctuation ||
+                     cmark_utf8proc_is_space(after_char) ||
+                     after_is_punctuation) ||
+                    before_is_cjk || after_is_cjk);
   if (c == '_') {
-    *can_open = left_flanking &&
-                (!right_flanking ||
-                 cmark_utf8proc_is_punctuation_or_symbol(before_char));
-    *can_close = right_flanking &&
-                 (!left_flanking ||
-                  cmark_utf8proc_is_punctuation_or_symbol(after_char));
+    *can_open = left_flanking && (!right_flanking || before_is_punctuation);
+    *can_close = right_flanking && (!left_flanking || after_is_punctuation);
   } else if (c == '\'' || c == '"') {
     *can_open = left_flanking &&
-         (!right_flanking || before_char == '(' || before_char == '[') &&
-         before_char != ']' && before_char != ')';
+                (!right_flanking || before_main_char == '(' ||
+                 before_main_char == '[') &&
+                before_main_char != ']' && before_main_char != ')';
     *can_close = right_flanking;
   } else {
     *can_open = left_flanking;
