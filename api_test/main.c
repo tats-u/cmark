@@ -900,6 +900,18 @@ static void test_md_to_html(test_batch_runner *runner, const char *markdown,
   free(html);
 }
 
+static void cjk_friendly_emphasis(test_batch_runner *runner) {
+  static const char emphasis_markdown[] =
+      "**\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88\xE3\x80\x82**"
+      "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88";
+
+  test_md_to_html(
+      runner, emphasis_markdown,
+      "<p><strong>\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88"
+      "\xE3\x80\x82</strong>\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88</p>\n",
+      "cjk emphasis is enabled by default");
+}
+
 static void test_feed_across_line_ending(test_batch_runner *runner) {
   // See #117
   cmark_parser *parser = cmark_parser_new(CMARK_OPT_DEFAULT);
@@ -1162,6 +1174,7 @@ int main(void) {
   test_cplusplus(runner);
   test_safe(runner);
   test_feed_across_line_ending(runner);
+  cjk_friendly_emphasis(runner);
   sub_document(runner);
   source_pos(runner);
   source_pos_inlines(runner);

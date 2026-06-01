@@ -16,6 +16,10 @@ void cmark_utf8proc_check(cmark_strbuf *dest, const uint8_t *line,
                           bufsize_t size);
 int cmark_utf8proc_is_space(int32_t uc);
 int cmark_utf8proc_is_punctuation_or_symbol(int32_t uc);
+int cmark_utf8proc_is_CJK(int32_t uc);
+int cmark_utf8proc_is_ideographic_vs(int32_t uc);
+int cmark_utf8proc_is_non_emoji_general_use_vs(int32_t uc);
+int cmark_utf8proc_is_CJK_ambiguous_punctuation(int32_t base, int32_t vs);
 
 #ifdef __cplusplus
 }
