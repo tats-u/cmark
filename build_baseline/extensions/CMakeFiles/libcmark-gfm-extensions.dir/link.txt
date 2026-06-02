@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcmark-gfm-extensions.a "CMakeFiles/libcmark-gfm-extensions.dir/autolink.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/cjk_friendly_emphasis.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/core-extensions.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/ext_scanners.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/strikethrough.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/table.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/tagfilter.c.o" "CMakeFiles/libcmark-gfm-extensions.dir/tasklist.c.o"
-/usr/bin/ranlib libcmark-gfm-extensions.a

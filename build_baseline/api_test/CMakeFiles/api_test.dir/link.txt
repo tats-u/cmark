@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/api_test.dir/link.d CMakeFiles/api_test.dir/cplusplus.cpp.o CMakeFiles/api_test.dir/harness.c.o CMakeFiles/api_test.dir/main.c.o -o api_test  ../src/libcmark-gfm.a ../extensions/libcmark-gfm-extensions.a ../src/libcmark-gfm.a
