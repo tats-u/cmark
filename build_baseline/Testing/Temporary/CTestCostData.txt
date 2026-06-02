@@ -1,0 +1,10 @@
+html_normalization 1 0.072138
+spectest_executable 1 0.601818
+smartpuncttest_executable 1 0.0583787
+extensions_executable 1 0.0729443
+roundtrip_extensions_executable 1 0.11813
+option_table_prefer_style_attributes 1 0.0484164
+option_full_info_string 1 0.0511705
+regressiontest_executable 1 0.0661625
+api_test 1 0.107626
+---
