@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/cmark-gfm.dir/link.d "CMakeFiles/cmark-gfm.dir/__/bin/main.c.o" -o cmark-gfm  libcmark-gfm.a ../extensions/libcmark-gfm-extensions.a libcmark-gfm.a
